@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.application.Application;
+import javafx.scene.Scene;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -30,7 +31,7 @@ public class MainModal extends Application {
      */
     public static void main(final String... args) {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("HW!");
+            LOGGER.debug("Starting application...");
         }
         launch(args);
     }
@@ -40,15 +41,14 @@ public class MainModal extends Application {
      */
     @Override
     public void start(final Stage primaryStage) {
-
         primaryStage.setAlwaysOnTop(true);
 
         final Stage dialog = new Stage();
 
         dialog.initOwner(primaryStage);
-        dialog.setTitle("My Clock");
         dialog.setAlwaysOnTop(true);
         dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.setScene(new Scene(new DigitalClock(), 100, 50));
         dialog.showAndWait();
     }
 
