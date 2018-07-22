@@ -1,10 +1,5 @@
 package home.clock;
 
-import java.lang.invoke.MethodHandles;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
@@ -26,20 +21,17 @@ import javafx.scene.shape.Path;
 import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author CGM
  *
  */
 @SuppressWarnings({ /* "restriction", */ "PMD.LawOfDemeter", "PMD.CommentRequired" })
+@Slf4j
 public class AppMainClock extends Application {
-    private static final Logger LOGGER;
     private static final double UNIT = 100;
     private final transient Clockwork clockwork = new Clockwork();
-
-    static {
-        LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-    }
 
     /**
      * main access point.
@@ -47,8 +39,8 @@ public class AppMainClock extends Application {
      * @param args
      */
     public static void main(final String... args) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Hello World!");
+        if (log.isDebugEnabled()) {
+            log.debug("Hello World!");
         }
         launch(args);
     }
@@ -83,7 +75,8 @@ public class AppMainClock extends Application {
 
         final double focusAngle = 0;
         final double focusDistance = 0;
-        final Paint fill = new RadialGradient(focusAngle, focusDistance, 0.5, 0.5, 0.5, true, CycleMethod.NO_CYCLE, stops);
+        final Paint fill = new RadialGradient(focusAngle, focusDistance, 0.5, 0.5, 0.5, true, CycleMethod.NO_CYCLE,
+                stops);
 
         final Circle circle = new Circle();
 
