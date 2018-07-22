@@ -2,6 +2,8 @@ package home.clock;
 
 import java.util.Calendar;
 
+import org.apache.commons.lang3.StringUtils;
+
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -10,7 +12,7 @@ import javafx.event.EventHandler;
 import javafx.scene.control.Label;
 import javafx.util.Duration;
 
-// https://stackoverflow.com/questions/13227809/displaying-changing-values-in-javafx-label
+// https://stackoverflow.com/questions/13227809/displaying-changing-values-in-javafx-label NOPMD
 /**
  * Creates a digital clock display as a simple label. Format of the clock
  * display is hh:mm:ss aa, where: hh Hour in am/pm (1-12) mm Minute in hour ss
@@ -37,51 +39,15 @@ public class DigitalClock extends Label {
             @Override
             public void handle(final ActionEvent actionEvent) {
                 final Calendar time = Calendar.getInstance();
-                final String hourString = StringUtilities.pad(2, ' ', time.get(Calendar.HOUR) == 0 ? "12" : time.get(Calendar.HOUR) + "");
-                final String minuteString = StringUtilities.pad(2, '0', time.get(Calendar.MINUTE) + "");
-                final String secondString = StringUtilities.pad(2, '0', time.get(Calendar.SECOND) + "");
+                final String hourString   = StringUtils.leftPad(time.get(Calendar.HOUR) == 0 ? "12" : time.get(Calendar.HOUR) + "", 2, ' ');
+                final String minuteString = StringUtils.leftPad(time.get(Calendar.MINUTE) + "", 2, '0');
+                final String secondString = StringUtils.leftPad(time.get(Calendar.SECOND) + "", 2, '0');
                 final String ampmString = time.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM";
                 setText(hourString + ":" + minuteString + ":" + secondString + " " + ampmString);
             }
         }), new KeyFrame(Duration.seconds(1)));
         timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
-    }
-
-}
-
-/**
- * Miscellaneous utilities.
- * 
- * @author CGM
- *
- */
-final class StringUtilities {
-
-    private StringUtilities() {
-        // To PMD.
-    }
-
-    /**
-     * Creates a string left padded to the specified width with the supplied padding
-     * character.
-     * 
-     * @param fieldWidth
-     *            the length of the resultant padded string.
-     * @param padChar
-     *            a character to use for padding the string.
-     * @param text
-     *            the string to be padded.
-     * @return the padded string.
-     */
-    public static String pad(final int fieldWidth, final char padChar, final String text) {
-        final StringBuilder strPadded = new StringBuilder();
-        for (int i = text.length(); i < fieldWidth; i++) {
-            strPadded.append(padChar);
-        }
-        strPadded.append(text);
-
-        return strPadded.toString();
     }
 
 }
