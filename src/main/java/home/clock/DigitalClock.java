@@ -1,8 +1,7 @@
 package home.clock;
 
-import java.util.Calendar;
-
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
 
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -38,12 +37,11 @@ public class DigitalClock extends Label {
              */
             @Override
             public void handle(final ActionEvent actionEvent) {
-                final Calendar time = Calendar.getInstance();
-                final String hourString   = StringUtils.leftPad(time.get(Calendar.HOUR) == 0 ? "12" : time.get(Calendar.HOUR) + "", 2, ' ');
-                final String minuteString = StringUtils.leftPad(time.get(Calendar.MINUTE) + "", 2, '0');
-                final String secondString = StringUtils.leftPad(time.get(Calendar.SECOND) + "", 2, '0');
-                final String ampmString = time.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM";
-                setText(hourString + ":" + minuteString + ":" + secondString + " " + ampmString);
+                final DateTime current = new DateTime();
+                final String hourString =   StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2, ' ');
+                final String minuteString = StringUtils.leftPad(current.getMinuteOfHour() + "", 2, '0');
+                final String secondString = StringUtils.leftPad(current.getSecondOfMinute() + "", 2, '0');
+                setText(hourString + ":" + minuteString + ":" + secondString);
             }
         }), new KeyFrame(Duration.seconds(1)));
         timeline.setCycleCount(Animation.INDEFINITE);
