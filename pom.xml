@@ -78,11 +78,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>home.clock.AppMainClock</mainClass>
-					<!-- <arguments> -->
-					<!-- <argument>foo</argument> -->
-					<!-- <argument>bar</argument> -->
-					<!-- </arguments> -->
+					<mainClass>home.clock.MainModal</mainClass>
 				</configuration>
 			</plugin>
 		</plugins>
