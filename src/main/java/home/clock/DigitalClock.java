@@ -8,6 +8,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.util.Duration;
 
@@ -26,6 +27,7 @@ public class DigitalClock extends Label {
      */
     public DigitalClock() {
         super();
+        setAlignment(Pos.CENTER);
         bindToTime();
     }
 
@@ -38,7 +40,7 @@ public class DigitalClock extends Label {
             @Override
             public void handle(final ActionEvent actionEvent) {
                 final DateTime current = new DateTime();
-                final String hourString =   StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2, ' ');
+                final String hourString =   StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2, '0');
                 final String minuteString = StringUtils.leftPad(current.getMinuteOfHour() + "", 2, '0');
                 final String secondString = StringUtils.leftPad(current.getSecondOfMinute() + "", 2, '0');
                 setText(hourString + ":" + minuteString + ":" + secondString);
