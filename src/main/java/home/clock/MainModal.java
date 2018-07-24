@@ -37,7 +37,7 @@ public class MainModal extends Application {
         dialog.initOwner(primaryStage);
         dialog.setAlwaysOnTop(true);
         dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.setScene(new Scene(new DigitalClock(), 100, 50));
+        dialog.setScene(new Scene(new DigitalClock(), 60, 20));
         dialog.showAndWait();
     }
 
