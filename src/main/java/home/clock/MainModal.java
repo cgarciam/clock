@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class MainModal extends Application {
+
     /**
      * Main entry point for application - example of modal window.
      * 
@@ -31,9 +33,11 @@ public class MainModal extends Application {
     @Override
     public void start(final Stage primaryStage) {
         primaryStage.setAlwaysOnTop(true);
+        primaryStage.initStyle(StageStyle.UNDECORATED);
 
         final Stage dialog = new Stage();
 
+        dialog.initStyle(StageStyle.UNDECORATED);
         dialog.initOwner(primaryStage);
         dialog.setAlwaysOnTop(true);
         dialog.initModality(Modality.WINDOW_MODAL);
