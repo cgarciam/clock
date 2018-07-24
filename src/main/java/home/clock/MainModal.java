@@ -14,6 +14,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class MainModal extends Application {
+    /** Window width in pixels. */
+    private static final double WIDTH = 60;
+    /** Window height in pixels. */
+    private static final double HEIGHT = 20;
 
     /**
      * Main entry point for application - example of modal window.
@@ -41,7 +45,7 @@ public class MainModal extends Application {
         dialog.initOwner(primaryStage);
         dialog.setAlwaysOnTop(true);
         dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.setScene(new Scene(new DigitalClock(), 60, 20));
+        dialog.setScene(new Scene(new DigitalClock(), WIDTH, HEIGHT));
         dialog.showAndWait();
     }
 
