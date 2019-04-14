@@ -13,6 +13,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<path-jfxrt>C:\Program Files\Java\jdk1.8.0_201\jre\lib\ext\jfxrt.jar</path-jfxrt>
 	</properties>
 
 	<dependencies>
@@ -23,10 +24,15 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.26</version>
+		</dependency>
+		<dependency>
 			<groupId>com.oracle</groupId>
 			<artifactId>javafx</artifactId>
 			<version>2.2</version>
-			<systemPath>/home/cesar/software/jdk/jdk1.8.0_144/jre/lib/ext/jfxrt.jar</systemPath>
+			<systemPath>${path-jfxrt}</systemPath>
 			<scope>system</scope>
 		</dependency>
 		<dependency>
@@ -54,7 +60,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
