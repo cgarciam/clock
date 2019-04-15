@@ -33,9 +33,7 @@ public class MainModal extends Application {
      * @param args
      */
     public static void main(final String... args) {
-        if (log.isDebugEnabled()) {
-            log.debug("Starting application...");
-        }
+        log.debug("Starting application...");
         launch(args);
     }
 

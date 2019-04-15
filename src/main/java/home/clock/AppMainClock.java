@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AppMainClock extends Application {
     private static final double UNIT = 100;
-    private final transient Clockwork clockwork = new Clockwork();
+    private final Clockwork clockwork = new Clockwork();
 
     /**
      * main access point.
@@ -39,9 +39,7 @@ public class AppMainClock extends Application {
      * @param args
      */
     public static void main(final String... args) {
-        if (log.isDebugEnabled()) {
-            log.debug("Hello World!");
-        }
+        log.debug("Hello World!");
         launch(args);
     }
 
