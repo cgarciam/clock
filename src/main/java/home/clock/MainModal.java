@@ -24,7 +24,7 @@ public class MainModal extends Application {
     /** Standard Logger. */
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     /** Window width in pixels. */
-    private static final double WIDTH = 120;
+    private static final double WIDTH = 150;
     /** Window height in pixels. */
     private static final double HEIGHT = 20;
 
