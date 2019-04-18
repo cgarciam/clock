@@ -18,12 +18,13 @@ import lombok.extern.slf4j.Slf4j;
  * @author cesar CGM
  *
  */
+@SuppressWarnings({ "PMD.AtLeastOneConstructor", "PMD.DataflowAnomalyAnalysis" })
 @Slf4j
 public class MainModal extends Application {
     /** Standard Logger. */
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     /** Window width in pixels. */
-    private static final double WIDTH = 60;
+    private static final double WIDTH = 120;
     /** Window height in pixels. */
     private static final double HEIGHT = 20;
 
@@ -51,11 +52,11 @@ public class MainModal extends Application {
         stage.initOwner(primaryStage);
         stage.setAlwaysOnTop(true);
         stage.initModality(Modality.WINDOW_MODAL);
-        stage.setScene(setUpScene());
+        stage.setScene(setupScene());
         stage.showAndWait();
     }
 
-    private Scene setUpScene() {
+    private Scene setupScene() {
         final Scene scene = new Scene(new DigitalClock(), WIDTH, HEIGHT);
         scene.setOnMouseClicked(event -> {
             if (event.getTarget() instanceof Text && LOGGER.isInfoEnabled()) {

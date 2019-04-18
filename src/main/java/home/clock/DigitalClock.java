@@ -21,6 +21,12 @@ import javafx.util.Duration;
  */
 @SuppressWarnings({ "PMD.LawOfDemeter", "PMD.AddEmptyString" })
 public class DigitalClock extends Label {
+    /** Format string for date in clock: dd-MM-yyyy */
+    protected static final String FORMATTER;
+
+    static {
+        FORMATTER = "dd-MM-yyyy";
+    }
 
     /**
      * Launches event handlers.
@@ -40,10 +46,11 @@ public class DigitalClock extends Label {
             @Override
             public void handle(final ActionEvent actionEvent) {
                 final DateTime current = new DateTime();
-                final String hourString =   StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2, '0');
-                final String minuteString = StringUtils.leftPad(current.getMinuteOfHour() + "", 2, '0');
-                final String secondString = StringUtils.leftPad(current.getSecondOfMinute() + "", 2, '0');
-                setText(hourString + ":" + minuteString + ":" + secondString);
+                final String hour =   StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2, '0');
+                final String minute = StringUtils.leftPad(current.getMinuteOfHour() + "", 2, '0');
+                final String second = StringUtils.leftPad(current.getSecondOfMinute() + "", 2, '0');
+                final String date = current.toString(FORMATTER);
+                setText(hour + ":" + minute + ":" + second + " " + date);
             }
         }), new KeyFrame(Duration.seconds(1)));
         timeline.setCycleCount(Animation.INDEFINITE);
