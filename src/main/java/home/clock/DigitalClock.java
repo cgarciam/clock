@@ -19,7 +19,6 @@ import javafx.util.Duration;
  * Second in minute aa AM/PM marker. Time is the system time for the local.
  * timezone.
  */
-// @SuppressWarnings({ "PMD.LawOfDemeter", "PMD.AddEmptyString" })
 public class DigitalClock extends Label {
     /** Format string for date in clock: dd-MM-yyyy */
     protected static final String FORMATTER;
@@ -44,10 +43,9 @@ public class DigitalClock extends Label {
     private void bindToTime() {
         final Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(0), actionEvent -> {
             final DateTime current = new DateTime();
-            final String hour = StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : current.getHourOfDay() + "", 2,
-                    '0');
-            final String minute = StringUtils.leftPad(current.getMinuteOfHour() + "", 2, '0');
-            final String second = StringUtils.leftPad(current.getSecondOfMinute() + "", 2, '0');
+            final String hour = StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : String.valueOf(current.getHourOfDay()), 2, '0');
+            final String minute = StringUtils.leftPad(String.valueOf(current.getMinuteOfHour()), 2, '0');
+            final String second = StringUtils.leftPad(String.valueOf(current.getSecondOfMinute()), 2, '0');
             final String date = current.toString(FORMATTER);
             setText(hour + ":" + minute + ":" + second + " " + date);
             setFont(Font.font(FONT_FAMILY, FontWeight.BOLD, 12));
