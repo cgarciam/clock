@@ -1,4 +1,4 @@
-Para ejecutarlo desde la console, es necesario:
+Para ejecutarlo desde la console:
 
 1. Ejecutar:
-mvn exec:java
+mvn compile exec:exec -Djavafx.lib=<path-to-javafx-sdk-17>
