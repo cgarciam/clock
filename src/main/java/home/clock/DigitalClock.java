@@ -1,7 +1,7 @@
 package home.clock;
 
-import org.apache.commons.lang3.StringUtils;
-import org.joda.time.DateTime;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -21,14 +21,20 @@ import javafx.util.Duration;
  */
 public class DigitalClock extends Label {
     /** Format string for date in clock: dd-MM-yyyy */
-    protected static final String FORMATTER;
+    protected static final String DATE_PATTERN = "dd-MM-yyyy";
+    /** Time format pattern: HH:mm:ss (24-hour). */
+    protected static final String TIME_PATTERN = "HH:mm:ss";
     /** Font family for text in UI. */
-    protected static final String FONT_FAMILY;
+    protected static final String FONT_FAMILY = "Georgia";
+    /** Font size for the clock label. */
+    protected static final double FONT_SIZE = 14;
 
-    static {
-        FORMATTER = "dd-MM-yyyy";
-        FONT_FAMILY = "Georgia";
-    }
+    /** Pre-built formatters — DateTimeFormatter is thread-safe and immutable. */
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern(TIME_PATTERN);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_PATTERN);
+
+    /** Pre-built font — Font is immutable, no need to recreate it every second. */
+    private static final Font CLOCK_FONT = Font.font(FONT_FAMILY, FontWeight.BOLD, FONT_SIZE);
 
     /**
      * Launches event handlers.
@@ -36,22 +42,22 @@ public class DigitalClock extends Label {
     public DigitalClock() {
         super();
         setAlignment(Pos.CENTER);
+        setFont(CLOCK_FONT);
         bindToTime();
     }
 
     // the digital clock updates once a second.
     private void bindToTime() {
-        final Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(0), actionEvent -> {
-            final DateTime current = new DateTime();
-            final String hour = StringUtils.leftPad(current.getHourOfDay() == 0 ? "12" : String.valueOf(current.getHourOfDay()), 2, '0');
-            final String minute = StringUtils.leftPad(String.valueOf(current.getMinuteOfHour()), 2, '0');
-            final String second = StringUtils.leftPad(String.valueOf(current.getSecondOfMinute()), 2, '0');
-            final String date = current.toString(FORMATTER);
-            setText(hour + ":" + minute + ":" + second + " " + date);
-            setFont(Font.font(FONT_FAMILY, FontWeight.BOLD, 12));
-        }), new KeyFrame(Duration.seconds(1)));
+        final Timeline timeline = new Timeline(
+                new KeyFrame(Duration.seconds(0), actionEvent -> updateText()),
+                new KeyFrame(Duration.seconds(1)));
         timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
+    }
+
+    private void updateText() {
+        final LocalDateTime current = LocalDateTime.now();
+        setText(current.format(TIME_FORMATTER) + "  " + current.format(DATE_FORMATTER));
     }
 
 }
