@@ -20,8 +20,6 @@ import javafx.util.Duration;
  * timezone.
  */
 public class DigitalClock extends Label {
-    /** Format string for date in clock: dd-MM-yyyy */
-    protected static final String DATE_PATTERN = "dd-MM-yyyy";
     /** Time format pattern: HH:mm:ss (24-hour). */
     protected static final String TIME_PATTERN = "HH:mm:ss";
     /** Font family for text in UI. */
@@ -31,7 +29,6 @@ public class DigitalClock extends Label {
 
     /** Pre-built formatters — DateTimeFormatter is thread-safe and immutable. */
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern(TIME_PATTERN);
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_PATTERN);
 
     /** Pre-built font — Font is immutable, no need to recreate it every second. */
     private static final Font CLOCK_FONT = Font.font(FONT_FAMILY, FontWeight.BOLD, FONT_SIZE);
@@ -57,7 +54,7 @@ public class DigitalClock extends Label {
 
     private void updateText() {
         final LocalDateTime current = LocalDateTime.now();
-        setText(current.format(TIME_FORMATTER) + "  " + current.format(DATE_FORMATTER));
+        setText(current.format(TIME_FORMATTER));
     }
 
 }
