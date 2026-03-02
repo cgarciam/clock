@@ -11,8 +11,9 @@ import javafx.scene.control.Label;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
+import lombok.extern.slf4j.Slf4j;
 
-// https://stackoverflow.com/questions/13227809/displaying-changing-values-in-javafx-label NOPMD
+// https://stackoverflow.com/questions/13227809/displaying-changing-values-in-javafx-label
 /**
  * A digital clock displayed as a {@link Label}.
  * <p>
@@ -22,11 +23,16 @@ import javafx.util.Duration;
  * </p>
  * <p>
  * The timeline is aligned to the system clock's second boundary so the
- * display stays accurately synchronised with the OS clock.
+ * display stays accurately synchronised with the OS clock. Time is further
+ * corrected by an {@link NtpSyncService} that queries {@code pool.ntp.org}
+ * on startup and every 30 minutes, eliminating the local-clock drift that
+ * causes a multi-second offset versus a phone's NTP-synced time.
  * </p>
  *
  * @author César García Mauricio.
  */
+@Slf4j
+//@SuppressWarnings({ "PMD.LongVariable", "PMD.CommentSize" })
 public class DigitalClock extends Label {
     /** Time format pattern: HH:mm:ss (24-hour). */
     protected static final String TIME_PATTERN = "HH:mm:ss";
@@ -53,6 +59,13 @@ public class DigitalClock extends Label {
     private static final Font CLOCK_FONT = Font.font(FONT_FAMILY, FontWeight.BOLD, FONT_SIZE);
 
     /**
+     * NTP synchronisation service. Queries {@code pool.ntp.org} once on
+     * startup and every 30 minutes. {@link #updateDisplay()} reads the cached
+     * offset — no blocking I/O on the JavaFX thread.
+     */
+    private final NtpSyncService ntpSyncService = new NtpSyncService();
+
+    /**
      * Creates the digital clock label and starts the time update loop.
      */
     public DigitalClock() {
@@ -60,6 +73,14 @@ public class DigitalClock extends Label {
         setAlignment(Pos.CENTER);
         setFont(CLOCK_FONT);
         bindToTime();
+
+        // Shut down the NTP background thread when the node leaves the scene.
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene == null) {
+                log.debug("DigitalClock removed from scene - shutting down NtpSyncService.");
+                ntpSyncService.shutdown();
+            }
+        });
     }
 
     /**
@@ -99,10 +120,12 @@ public class DigitalClock extends Label {
     }
 
     /**
-     * Reads the current system time and updates the label text.
+     * Reads the NTP-corrected current time and updates the label text.
+     * Falls back to the local clock automatically if NTP is unavailable
+     * (the offset stays at zero in that case).
      */
     private void updateDisplay() {
-        final LocalDateTime now = LocalDateTime.now();
+        final LocalDateTime now = ntpSyncService.getAdjustedNow(); // NOPMD.LawOfDemeter
         final DateTimeFormatter formatter = WITH_DATE ? TIME_DATE_FORMATTER : TIME_FORMATTER;
         setText(now.format(formatter));
     }
