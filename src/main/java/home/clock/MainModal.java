@@ -1,5 +1,8 @@
 package home.clock;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -8,6 +11,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.util.Duration;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -27,6 +31,12 @@ public class MainModal extends Application { // NOPMD.AtLeastOneConstructor
     private static final double MIN_WIDTH = 100;
     /** Minimum window height in pixels. */
     private static final double MIN_HEIGHT = 25;
+    /**
+     * Interval in seconds between periodic always-on-top re-assertions.
+     * The OS window manager may silently demote the window from the topmost
+     * z-order; toggling the property forces a re-evaluation.
+     */
+    private static final int ALWAYS_ON_TOP_REASSERT_SECONDS = 5; // NOPMD.LongVariable
 
     /**
      * Main entry point for the modal clock application.
@@ -60,6 +70,9 @@ public class MainModal extends Application { // NOPMD.AtLeastOneConstructor
         clockStage.initModality(Modality.WINDOW_MODAL);
         clockStage.setScene(setupScene());
         clockStage.setOnCloseRequest(event -> primaryStage.close());
+
+        enforceAlwaysOnTop(primaryStage, clockStage);
+
         clockStage.showAndWait();
     }
 
@@ -94,6 +107,54 @@ public class MainModal extends Application { // NOPMD.AtLeastOneConstructor
             }
         });
         return scene;
+    }
+
+    /**
+     * Sets up two mechanisms to keep both stages above all other windows:
+     * <ol>
+     *   <li>A {@link Timeline} that periodically toggles {@code alwaysOnTop}
+     *       off and back on, forcing the OS to re-evaluate the z-order.</li>
+     *   <li>A focus-change listener on the clock stage that immediately
+     *       re-asserts topmost status when focus is lost (e.g. user clicks
+     *       another application).</li>
+     * </ol>
+     *
+     * @param primaryStage the hidden owner stage
+     * @param clockStage   the visible clock stage
+     */
+    private void enforceAlwaysOnTop(final Stage primaryStage,
+                                     final Stage clockStage) {
+        // --- Periodic re-assertion via Timeline ---
+        final Timeline topEnforcer = new Timeline(
+                new KeyFrame(Duration.seconds(ALWAYS_ON_TOP_REASSERT_SECONDS), event -> {
+                    reassertAlwaysOnTop(primaryStage);
+                    reassertAlwaysOnTop(clockStage);
+                })
+        );
+        topEnforcer.setCycleCount(Animation.INDEFINITE);
+        topEnforcer.play();
+
+        // --- Immediate re-assertion when focus is lost ---
+        clockStage.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (Boolean.FALSE.equals(isNowFocused)) {
+                log.debug("Clock stage lost focus — re-asserting alwaysOnTop");
+                reassertAlwaysOnTop(primaryStage);
+                reassertAlwaysOnTop(clockStage);
+            }
+        });
+    }
+
+    /**
+     * Toggles {@code alwaysOnTop} off then on for the given stage.
+     * This two-step switch forces the underlying platform window manager
+     * (e.g. Windows' {@code SetWindowPos(HWND_TOPMOST, …)}) to re-apply
+     * the topmost flag even if it was silently cleared.
+     *
+     * @param stage the stage whose topmost status should be refreshed
+     */
+    private static void reassertAlwaysOnTop(final Stage stage) {
+        stage.setAlwaysOnTop(false);
+        stage.setAlwaysOnTop(true);
     }
 
 }
