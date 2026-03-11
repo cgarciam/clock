@@ -1,5 +1,6 @@
 package home.clock;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,10 +42,25 @@ import lombok.extern.slf4j.Slf4j;
  * <p>{@link #getAdjustedNow()} = {@code System.currentTimeMillis() + offsetMillis}
  * — no I/O on the JavaFX thread, safe to call every second.</p>
  *
+ * <p>Resilience improvements:</p>
+ * <ul>
+ *   <li><b>No retry storm:</b> uses {@code scheduleWithFixedDelay} so the next
+ *       sync waits a full {@value #RESYNC_INTERVAL_MINUTES} minutes <em>after</em>
+ *       the previous run completes, regardless of how long it took.
+ *       {@code scheduleAtFixedRate} would accumulate skipped runs during an outage
+ *       and fire them all in rapid succession when network recovers.</li>
+ *   <li><b>No stale SSL connections:</b> after any {@link SSLException} or
+ *       {@link IOException} the shared {@link HttpClient} is rebuilt so that
+ *       HTTP/2 connections from a previous session are not reused.</li>
+ *   <li><b>Exponential back-off during outages:</b> when all three sources fail
+ *       the next sync is delayed by doubling the current interval (capped at
+ *       {@value #MAX_BACKOFF_MINUTES} minutes) instead of always retrying in 30 min.</li>
+ * </ul>
+ *
  * @author César García Mauricio &amp; GitHub Copilot.
  */
 @Slf4j
-//@SuppressWarnings({ "PMD.LongVariable", "PMD.CommentSize", "PMD.OnlyOneReturn", "PMD.DoNotUseThreads" })
+//@SuppressWarnings({ "PMD.LongVariable", "PMD.CommentSize", "PMD.OnlyOneReturn", "PMD.DoNotUseThreads", "PMD.TooManyMethods" })
 public class NtpSyncService {
 
     // ── NTP constants ──────────────────────────────────────────────────────────
@@ -72,8 +89,11 @@ public class NtpSyncService {
     private static final Pattern DATE_TIME_PATTERN =
             Pattern.compile("\"dateTime\"\\s*:\\s*\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})");
 
-    /** How often the background thread re-syncs. */
+    // ── Scheduler / back-off constants ─────────────────────────────────────────
+    /** Nominal delay between syncs when network is healthy (minutes). */
     private static final long RESYNC_INTERVAL_MINUTES = 30L;
+    /** Upper cap for exponential back-off (minutes). */
+    private static final long MAX_BACKOFF_MINUTES = 240L;  // 4 hours
 
     // ── State ──────────────────────────────────────────────────────────────────
     /**
@@ -81,13 +101,22 @@ public class NtpSyncService {
      * Written by the scheduler thread, read by the JavaFX thread.
      */
     private final AtomicLong offsetMillis = new AtomicLong(0L);
+
     /**
-     * HTTP client shared by both HTTP fallbacks. Configured with a reasonable
-     * timeout to avoid hanging the scheduler thread.
+     * Current back-off delay in minutes. Reset to {@value #RESYNC_INTERVAL_MINUTES}
+     * on a successful sync; doubled on a full failure, capped at
+     * {@value #MAX_BACKOFF_MINUTES}.
      */
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(HTTP_TIMEOUT)
-            .build();
+    private volatile long currentDelayMinutes = RESYNC_INTERVAL_MINUTES; // NOPMD.AvoidUsingVolatile: This is only written by the scheduler
+
+    /**
+     * HTTP client shared by both HTTP fallbacks.
+     * Wrapped in an {@link AtomicReference} so it can be rebuilt atomically
+     * when a stale SSL/IO error is detected.
+     */
+    private final AtomicReference<HttpClient> httpClientRef =
+            new AtomicReference<>(buildHttpClient());
+
     /** Background scheduler for periodic re-syncs. Runs as a daemon thread. */
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -99,16 +128,17 @@ public class NtpSyncService {
     // ── Constructor ────────────────────────────────────────────────────────────
 
     /**
-     * Creates the service, runs an immediate sync, and schedules periodic
-     * re-syncs every {@value #RESYNC_INTERVAL_MINUTES} minutes.
+     * Creates the service, runs an immediate sync, and schedules the first
+     * delayed re-sync.
+     *
+     * <p>Scheduling uses {@code scheduleWithFixedDelay} (not
+     * {@code scheduleAtFixedRate}) so that each new sync starts exactly
+     * {@link #currentDelayMinutes} minutes <em>after the previous one finishes</em>,
+     * preventing pileups after a network outage.</p>
      */
     public NtpSyncService() {
         syncNow();
-        scheduler.scheduleAtFixedRate(
-                this::syncNow,
-                RESYNC_INTERVAL_MINUTES,
-                RESYNC_INTERVAL_MINUTES,
-                TimeUnit.MINUTES);
+        scheduleNext();
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -139,19 +169,53 @@ public class NtpSyncService {
         scheduler.shutdown();
     }
 
+    // ── Scheduling ─────────────────────────────────────────────────────────────
+
+    /**
+     * Schedules one future run of {@link #syncAndReschedule()} using the current
+     * back-off delay.  After that run completes it will call this method again,
+     * forming a self-rescheduling chain instead of a fixed-rate loop.
+     */
+    private void scheduleNext() {
+        scheduler.schedule(this::syncAndReschedule, currentDelayMinutes, TimeUnit.MINUTES);
+    }
+
+    /**
+     * Performs a sync then schedules the next one.  This is the body executed
+     * by the scheduler; the self-rescheduling replaces the old
+     * {@code scheduleAtFixedRate} and avoids run-accumulation during outages.
+     */
+    private void syncAndReschedule() {
+        syncNow();
+        scheduleNext();
+    }
+
     // ── Sync chain ─────────────────────────────────────────────────────────────
 
     /**
      * Tries each time source in order. Stops as soon as one succeeds.
-     * All failures are logged at WARN level; the winning source is logged at
-     * DEBUG level.
+     * On full failure, doubles the back-off interval (capped at
+     * {@value #MAX_BACKOFF_MINUTES} min) to avoid hammering the network
+     * during a prolonged outage.
      */
     private void syncNow() {
-        if (tryNtpUdp())    { return; }
-        if (tryHttp(HTTP_URL_1, "worldtimeapi.org", this::parseWorldTimeApi)) { return; }
-        if (tryHttp(HTTP_URL_2, "timeapi.io",       this::parseTimeApiIo))    { return; }
-        log.atWarn().addArgument(offsetMillis.get())
-                .log("All time sources failed — using local clock (offset unchanged at {} ms)");
+        if (tryNtpUdp())    { resetBackOff(); return; }
+        if (tryHttp(HTTP_URL_1, "worldtimeapi.org", this::parseWorldTimeApi)) { resetBackOff(); return; }
+        if (tryHttp(HTTP_URL_2, "timeapi.io",       this::parseTimeApiIo))    { resetBackOff(); return; }
+        doubleBackOff();
+        log.atWarn().addArgument(offsetMillis.get()).addArgument(currentDelayMinutes)
+                .log("All time sources failed — using local clock (offset unchanged at {} ms)."
+                   + " Next retry in {} min.");
+    }
+
+    /** Resets the back-off to the nominal interval after a successful sync. */
+    private void resetBackOff() {
+        currentDelayMinutes = RESYNC_INTERVAL_MINUTES;
+    }
+
+    /** Doubles the back-off interval, capped at {@value #MAX_BACKOFF_MINUTES} min. */
+    private void doubleBackOff() {
+        currentDelayMinutes = Math.min(currentDelayMinutes * 2, MAX_BACKOFF_MINUTES);
     }
 
     // ── Source 1: NTP UDP ──────────────────────────────────────────────────────
@@ -190,12 +254,12 @@ public class NtpSyncService {
                     .GET()
                     .build();
             final HttpResponse<String> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    httpClientRef.get().send(request, HttpResponse.BodyHandlers.ofString());
             final long afterMillis = System.currentTimeMillis();
 
             if (response.statusCode() != 200) { // NOPMD.AvoidLiteralsInIfCondition: HTTP status code.
                 log.atWarn().addArgument(sourceName).addArgument(response.statusCode())
-                        .log("{} returned HTTP {} — skipping", sourceName, response.statusCode());
+                        .log("{} returned HTTP {} — skipping");
                 return false;
             }
 
@@ -214,9 +278,18 @@ public class NtpSyncService {
             applyOffset(trueMillis - localMillis, sourceName);
             return true;
 
+        } catch (final IOException ex) {
+            // SSL handshake failures (SSLException extends IOException) and
+            // connection resets are often caused by the shared HttpClient
+            // reusing a stale HTTP/2 session.  Rebuild it so the next attempt
+            // starts with a fresh connection pool.
+            log.atWarn().setCause(ex).addArgument(sourceName)
+                    .log("{} failed with I/O error — rebuilding HttpClient and trying next fallback");
+            httpClientRef.set(buildHttpClient());
+            return false;
         } catch (final Exception ex) { // NOSONAR S2142 NOPMD.AvoidCatchingGenericException: We want to catch all exceptions from this source and fall back to the next one.
             log.atWarn().setCause(ex).addArgument(sourceName)
-                    .log("{} failed — trying next fallback", sourceName);
+                    .log("{} failed — trying next fallback");
             return false;
         }
     }
@@ -244,6 +317,19 @@ public class NtpSyncService {
     private void applyOffset(final long offset, final String source) {
         offsetMillis.set(offset);
         log.debug("Time sync OK via {} — offset: {} ms", source, offset);
+    }
+
+    /**
+     * Creates a new {@link HttpClient} instance.
+     * Called at construction time and whenever a stale-connection error forces
+     * a rebuild.
+     *
+     * @return a freshly built {@link HttpClient}
+     */
+    private static HttpClient buildHttpClient() {
+        return HttpClient.newBuilder()
+                .connectTimeout(HTTP_TIMEOUT)
+                .build();
     }
 
 }
