@@ -28,6 +28,12 @@ import lombok.extern.slf4j.Slf4j;
  * on startup and every 30 minutes, eliminating the local-clock drift that
  * causes a multi-second offset versus a phone's NTP-synced time.
  * </p>
+ * <p>
+ * The rectangle size can be controlled via the parameterised constructor
+ * {@link #DigitalClock(double, double)}. The font size is scaled
+ * automatically so the text fills the available height, or set explicitly
+ * via {@link #DigitalClock(double, double, double)}.
+ * </p>
  *
  * @author César García Mauricio.
  */
@@ -40,8 +46,19 @@ public class DigitalClock extends Label {
     protected static final String TIME_DATE_PATTERN = "HH:mm:ss  dd-MM-yyyy";
     /** Font family for text in UI. */
     protected static final String FONT_FAMILY = "Georgia";
-    /** Font size for the clock label. */
-    protected static final double FONT_SIZE = 14;
+    /** Default preferred width in pixels. */
+    protected static final double DEFAULT_WIDTH = 100;
+    /** Default preferred height in pixels. */
+    protected static final double DEFAULT_HEIGHT = 25;
+    /** Default font size in points. */
+    protected static final double DEFAULT_FONT_SIZE = 10;
+    /**
+     * Fraction of the height reserved for vertical padding inside the label.
+     * The remaining fraction is available for the glyph ascent/descent.
+     */
+    private static final double HEIGHT_TO_FONT_RATIO = 0.65;
+    /** Sentinel value meaning "derive font size from height automatically". */
+    private static final double FONT_SIZE_AUTO = -1.0;
     /** Whether to append the current date after the time. */
     private static final boolean WITH_DATE = false;
 
@@ -55,8 +72,10 @@ public class DigitalClock extends Label {
     private static final DateTimeFormatter TIME_DATE_FORMATTER =
             DateTimeFormatter.ofPattern(TIME_DATE_PATTERN);
 
-    /** Pre-built font — {@link Font} is immutable, no need to recreate it every second. */
-    private static final Font CLOCK_FONT = Font.font(FONT_FAMILY, FontWeight.BOLD, FONT_SIZE);
+    /** Preferred width of the clock rectangle in pixels. */
+    private final double preferredWidth;
+    /** Preferred height of the clock rectangle in pixels. */
+    private final double preferredHeight;
 
     /**
      * NTP synchronisation service. Queries {@code pool.ntp.org} once on
@@ -66,12 +85,62 @@ public class DigitalClock extends Label {
     private final NtpSyncService ntpSyncService = new NtpSyncService();
 
     /**
-     * Creates the digital clock label and starts the time update loop.
+     * Creates the digital clock label with default dimensions
+     * ({@value #DEFAULT_WIDTH} × {@value #DEFAULT_HEIGHT} px) and starts
+     * the time update loop.
      */
     public DigitalClock() {
+        this(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    }
+
+    /**
+     * Creates the digital clock label sized to the given rectangle and starts
+     * the time update loop. The font size is derived automatically from
+     * {@code height} so the text fills the available vertical space.
+     *
+     * @param width  preferred width of the clock area in pixels  (must be &gt; 0)
+     * @param height preferred height of the clock area in pixels (must be &gt; 0)
+     */
+    public DigitalClock(final double width, final double height) {
+        this(width, height, FONT_SIZE_AUTO);
+    }
+
+    /**
+     * Creates the digital clock label sized to the given rectangle with an
+     * explicit font size, and starts the time update loop.
+     *
+     * @param width    preferred width of the clock area in pixels  (must be &gt; 0)
+     * @param height   preferred height of the clock area in pixels (must be &gt; 0)
+     * @param fontSize explicit font size in points (must be &gt; 0); pass
+     *                 {@link #FONT_SIZE_AUTO} to derive the size automatically
+     *                 from {@code height}
+     */
+//    @SuppressWarnings("PMD.ConstructorCallsOverridableMethod")
+    public DigitalClock(final double width, final double height, final double fontSize) {
         super();
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException(
+                    "DigitalClock dimensions must be positive, got: " + width + "×" + height);
+        }
+        if (fontSize != FONT_SIZE_AUTO && fontSize <= 0) {
+            throw new IllegalArgumentException(
+                    "DigitalClock fontSize must be positive, got: " + fontSize);
+        }
+        this.preferredWidth  = width;
+        this.preferredHeight = height;
+
+        setPrefSize(preferredWidth, preferredHeight);
+        setMinSize(preferredWidth, preferredHeight);
+        setMaxSize(preferredWidth, preferredHeight);
         setAlignment(Pos.CENTER);
-        setFont(CLOCK_FONT);
+
+        // Use explicit font size when provided; otherwise scale from height.
+        final double resolvedFontSize = (fontSize == FONT_SIZE_AUTO)
+                ? height * HEIGHT_TO_FONT_RATIO
+                : fontSize;
+        setFont(Font.font(FONT_FAMILY, FontWeight.BOLD, resolvedFontSize));
+        log.debug("DigitalClock created: {}×{}px, font size={}", width, height, resolvedFontSize);
+
         bindToTime();
 
         // Shut down the NTP background thread when the node leaves the scene.

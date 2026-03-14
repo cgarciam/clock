@@ -16,6 +16,11 @@
         <javafx.version>17.0.14-ea+2</javafx.version>
         <!-- Override on the command line: -Djavafx.lib=<path> -->
         <javafx.lib>C:\Users\gamo_\Documents\software\JavaFX\javafx-sdk-17.0.18\lib</javafx.lib>
+        <!-- Clock rectangle size. Override on the command line:
+             mvn compile exec:exec -Dclock.width=80 -Dclock.height=20 -Dclock.font.size=10 -->
+        <clock.width>100</clock.width>
+        <clock.height>25</clock.height>
+        <clock.font.size>12</clock.font.size>
     </properties>
 
     <dependencies>
@@ -116,6 +121,9 @@
                                 <!-- project classes + all runtime deps, no %classpath token needed -->
                                 <argument>${project.build.outputDirectory};${dep.classpath}</argument>
                                 <argument>home.clock.Launcher</argument>
+                                <!-- Clock size: override with -Dclock.width=NNN -Dclock.height=NNN -->
+                                <argument>--width=${clock.width}</argument>
+                                <argument>--height=${clock.height}</argument>
                             </arguments>
                         </configuration>
                     </execution>
