@@ -27,10 +27,12 @@ import lombok.extern.slf4j.Slf4j;
  * @author CGM
  *
  */
-@SuppressWarnings({ /* "restriction", */ "PMD.LawOfDemeter", "PMD.CommentRequired" })
+//@SuppressWarnings({ "PMD.LawOfDemeter", "PMD.CommentRequired", "PMD.TooManyMethods", "PMD.AtLeastOneConstructor" })
 @Slf4j
 public class AppMainClock extends Application {
+	/** The size of the clock. */
     private static final double UNIT = 100;
+    /** The clockwork. */
     private final Clockwork clockwork = new Clockwork();
 
     /**
@@ -62,7 +64,6 @@ public class AppMainClock extends Application {
         makeATransparentStage(stage, scene);
     }
 
-    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
     private Node outerRim() {
         final Stop[] stops = new Stop[4];
 
@@ -99,7 +100,7 @@ public class AppMainClock extends Application {
         final Rotate rotate = new Rotate();
         rotate.setPivotX(UNIT);
         rotate.setPivotY(UNIT);
-        rotate.setAngle(360 / 12 * nMark);
+        rotate.setAngle(360.0 / 12.0 * nMark);
         line.getTransforms().add(rotate);
         line.setStrokeWidth(2);
         return line;
@@ -122,32 +123,20 @@ public class AppMainClock extends Application {
     }
 
     private EventHandler<MouseEvent> moveWhenDragging(final Stage stage) {
-        return new EventHandler<MouseEvent>() {
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public void handle(final MouseEvent mouseEvent) {
+    	return mouseEvent -> {
                 stage.setX(mouseEvent.getScreenX() - stage.getWidth() / 2);
                 stage.setY(mouseEvent.getScreenY() - stage.getHeight() / 2);
-            }
         };
     }
 
     private EventHandler<ScrollEvent> scaleWhenScrolling(final Stage stage, final Parent root) {
-        return new EventHandler<ScrollEvent>() {
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public void handle(final ScrollEvent scrollEvent) {
+    	return scrollEvent -> {
                 final double scroll = scrollEvent.getDeltaY();
                 root.setScaleX(root.getScaleX() + scroll / 100);
                 root.setScaleY(root.getScaleY() + scroll / 100);
                 root.setTranslateX(root.getTranslateX() + scroll);
                 root.setTranslateY(root.getTranslateY() + scroll);
                 stage.sizeToScene();
-            }
         };
     }
 
@@ -192,7 +181,8 @@ public class AppMainClock extends Application {
         return rotate;
     }
 
-    private Node hand(final double stretchRelativeToRim, final Color color, final Rotate rotate) {
+    private Node hand(final double stretchRelativeToRim, // NOPMD LongVariable
+    		final Color color, final Rotate rotate) {
         final Path hand = new Path();
 
         hand.setFill(color);
