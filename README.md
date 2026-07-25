@@ -6,6 +6,22 @@
 mvn compile exec:exec -Dclock.width=68 -Dclock.height=20 -Dclock.font.size=10 -Djavafx.lib=/path/to/javafx-sdk-17
 ```
 
+### Without Maven installed (using Maven Wrapper)
+
+If you don't have Maven installed, you can use the included Maven Wrapper instead. Just replace `mvn` with `./mvnw` (Linux/Mac) or `mvnw.cmd` (Windows):
+
+**Linux / Mac:**
+```
+./mvnw compile exec:exec -Dclock.width=68 -Dclock.height=20 -Dclock.font.size=10 -Djavafx.lib=/path/to/javafx-sdk-17
+```
+
+**Windows:**
+```
+mvnw.cmd compile exec:exec -Dclock.width=68 -Dclock.height=20 -Dclock.font.size=10 -Djavafx.lib=/path/to/javafx-sdk-17
+```
+
+The wrapper will automatically download the correct Maven version on first run.
+
 ## Running from STS / Eclipse
 
 **Important:** Run `home.clock.Launcher` as the main class, **not** `MainModal`.
